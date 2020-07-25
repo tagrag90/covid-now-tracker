@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { MenuItem, FormControl, Select } from "@material-ui/core";
+import {
+  MenuItem,
+  FormControl,
+  Select,
+  Card,
+  CardContent,
+} from "@material-ui/core";
 import InfoBox from "./InfoBox";
 import Map from "./Map";
 import "./App.css";
+import Table from "./Table";
+import { sortData } from "./util";
 
 function App() {
   const [countries, setCountries] = useState([]);
   const [country, setCountry] = useState("worldwide");
+  const [countryInfo, setCountryInfo] = useState({});
+  const [tableData, setTableData] = useState([]);
 
-  // STATE = How to write a variable in React js.
-  // https://disease.sh/v3/covid-19/countries
-  // useEffect = Runs a piece of code
-  // based on a given condition
+  useEffect(() => {
+    fetch("https://disease.sh/v3/covid-19/all")
+      .then((response) => response.json())
+      .then((data) => {
+        setCountryInfo(data);
+      });
+  }, []);
 
   useEffect(() => {
     const getCountriesData = async () => {
@@ -23,6 +36,8 @@ function App() {
             value: country.countryInfo.iso2,
           }));
 
+          const sortedData = sortData(data);
+          setTableData(sortedData);
           setCountries(countries);
         });
     };
@@ -33,6 +48,18 @@ function App() {
   const onCountryChange = async (event) => {
     const countryCode = event.target.value;
     setCountry(countryCode);
+
+    const url =
+      countryCode === "worldwide"
+        ? "https://disease.sh/v3/covid-19/all"
+        : `https://disease.sh/v3/covid-19/countries/${countryCode}`;
+
+    await fetch(url)
+      .then((response) => response.json())
+      .then((data) => {
+        setCountry(countryCode);
+        setCountryInfo(data);
+      });
   };
 
   return (
@@ -46,7 +73,7 @@ function App() {
               onChange={onCountryChange}
               value={country}
             >
-              <MenuItem value="worldwide">worldwide</MenuItem>
+              <MenuItem value="worldwide">세 계 현 황</MenuItem>
               {countries.map((country) => (
                 <MenuItem value={country.value}>{country.name}</MenuItem>
               ))}
@@ -55,20 +82,37 @@ function App() {
         </div>
 
         <div className="app__stats">
-          <InfoBox title="코로나 확진" cases={123} total={2000} />
+          <InfoBox
+            title="코로나 확진"
+            cases={countryInfo.todayCases}
+            total={countryInfo.cases}
+          />
 
-          <InfoBox title="완 치" cases={1234} total={3000} />
+          <InfoBox
+            title="완 치"
+            cases={countryInfo.todayRecovered}
+            total={countryInfo.recovered}
+          />
 
-          <InfoBox title="사 망" cases={4322} total={4000} />
+          <InfoBox
+            title="사 망"
+            cases={countryInfo.todayDeaths}
+            total={countryInfo.deaths}
+          />
         </div>
 
         {/* Map */}
         <Map />
       </div>
-      <div className="app__right">
-        {/* Table */}
-        {/* Graph */}
-      </div>
+      <Card className="app__right">
+        <CardContent>
+          <h3>Live Cases by Country</h3>
+          <Table countries={tableData} />
+          {/* Table */}
+          <h3>Worldwide new cases</h3>
+          {/* Graph */}
+        </CardContent>
+      </Card>
     </div>
   );
 }
